@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0d0d0d" />
+  <title>DocScan</title>
+
+  <!-- PWA manifest & icons -->
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icons/icon-512.png" />
+
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+  <script src="js/app.js" defer></script>
+
+  <!-- Register service worker (required for PWA / Add to Home Screen) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .catch(err => console.warn('SW registration failed:', err));
+      });
+    }
+  </script>
+</head>
+<body>
+  <div id="app">
+
+    <!-- ── Header ──────────────────────────────────────────────────────────── -->
+    <header id="app-header">
+      <div class="header-left">
+        <span class="app-icon">&#9684;</span>
+        <span class="app-title">DocScan</span>
+      </div>
+      <div class="header-right">
+        <button id="flash-btn" class="icon-btn" title="Toggle flash" aria-label="Toggle flash">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ── Viewfinder / Preview area ───────────────────────────────────────── -->
+    <main id="main-content">
+
+      <!-- Init screen -->
+      <section id="screen-init" class="screen active">
+        <div class="splash-icon">&#9684;</div>
+        <h2 class="splash-title">DocScan</h2>
+        <p class="splash-subtitle">Scan documents &amp; receipts in seconds</p>
+        <button id="start-camera-btn" class="btn btn-primary btn-lg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          Open Camera
+        </button>
+      </section>
+
+      <!-- Camera / Scanning screen -->
+      <section id="screen-scanning" class="screen">
+        <div id="viewfinder">
+          <video id="video" autoplay playsinline muted></video>
+          <!-- Corner bracket overlays -->
+          <div class="bracket bracket-tl"></div>
+          <div class="bracket bracket-tr"></div>
+          <div class="bracket bracket-bl"></div>
+          <div class="bracket bracket-br"></div>
+          <!-- Animated scan line -->
+          <div id="scan-line"></div>
+          <!-- Instruction badge -->
+          <div class="viewfinder-hint">Align document within frame</div>
+        </div>
+        <div class="controls-bar">
+          <button id="gallery-btn" class="icon-btn secondary" title="Choose from gallery" aria-label="Upload from gallery">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+          </button>
+          <button id="capture-btn" class="capture-btn" aria-label="Capture photo">
+            <span class="capture-inner"></span>
+          </button>
+          <button id="cancel-scan-btn" class="icon-btn secondary" title="Cancel" aria-label="Cancel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <!-- Hidden file input for gallery -->
+        <input type="file" id="gallery-input" accept="image/*" aria-hidden="true" />
+      </section>
+
+      <!-- Preview screen -->
+      <section id="screen-preview" class="screen">
+        <div id="preview-container">
+          <img id="preview-img" alt="Captured document" />
+          <div class="preview-badge">Review your scan</div>
+        </div>
+        <div class="controls-bar stacked">
+          <div class="btn-row">
+            <button id="retake-btn" class="btn btn-ghost">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+                <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/>
+              </svg>
+              Retake
+            </button>
+            <button id="export-btn" class="btn btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              Create PDF
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Ready screen -->
+      <section id="screen-ready" class="screen">
+        <div id="pdf-card">
+          <div class="pdf-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="pdf-icon">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+          </div>
+          <p class="pdf-ready-title">PDF Ready</p>
+          <p id="pdf-filename" class="pdf-filename">scan.pdf</p>
+        </div>
+        <div class="controls-bar stacked">
+          <button id="download-btn" class="btn btn-primary btn-full">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download PDF
+          </button>
+          <button id="email-btn" class="btn btn-secondary btn-full">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            Email PDF
+          </button>
+          <button id="scan-again-btn" class="btn btn-ghost btn-full">
+            Scan Another Document
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ── Email Modal ──────────────────────────────────────────────────────── -->
+    <div id="email-modal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Send PDF by email">
+      <div class="modal-backdrop" id="modal-backdrop"></div>
+      <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <h3 class="modal-title">Send PDF by Email</h3>
+        <p class="modal-subtitle">Enter the recipient's email address below.</p>
+        <input
+          type="email"
+          id="email-input"
+          class="text-input"
+          placeholder="recipient@example.com"
+          inputmode="email"
+          autocomplete="email"
+          autocapitalize="off"
+        />
+        <div id="email-error" class="field-error hidden"></div>
+        <div class="modal-actions">
+          <button id="modal-cancel-btn" class="btn btn-ghost">Cancel</button>
+          <button id="modal-send-btn" class="btn btn-primary">
+            <span id="send-btn-label">Send</span>
+            <span id="send-btn-spinner" class="spinner hidden"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Toast ────────────────────────────────────────────────────────────── -->
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+    <!-- ── Hidden canvas (off-screen capture) ──────────────────────────────── -->
+    <canvas id="canvas" aria-hidden="true"></canvas>
+
+  </div><!-- #app -->
+</body>
+</html>
