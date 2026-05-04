@@ -330,8 +330,9 @@ modalSendBtn.addEventListener('click', sendEmail);
 emailInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendEmail(); });
 
 // Prevent accidental zoom on double-tap (iOS)
+// Use closest() so it still triggers when tapping an SVG/span child inside a button
 document.addEventListener('touchend', e => {
-  if (e.target.tagName === 'BUTTON') e.preventDefault();
+  if (e.target.closest('button')) e.preventDefault();
 }, { passive: false });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
