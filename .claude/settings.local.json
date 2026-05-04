@@ -5,7 +5,9 @@
       "Bash(node generate-icons.js)",
       "Bash(npx ngrok *)",
       "Bash(node server.js)",
-      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:3000/manifest.json\" -UseBasicParsing)"
+      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:3000/manifest.json\" -UseBasicParsing)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }
