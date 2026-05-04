@@ -271,7 +271,7 @@ function resetAndScanAgain() {
   pdfBlob         = null;
   currentFileName = '';
   previewImg.src  = '';
-  setScreen('init');
+  startCamera();   // go straight to camera, skip the splash tap
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────────
