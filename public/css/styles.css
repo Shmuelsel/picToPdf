@@ -75,6 +75,7 @@ html, body {
   cursor: pointer;
   transition: background 0.15s, opacity 0.15s;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .icon-btn svg { width: 20px; height: 20px; }
@@ -235,6 +236,7 @@ html, body {
   cursor: pointer;
   transition: transform 0.1s;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .capture-btn:active { transform: scale(0.92); }
@@ -365,6 +367,7 @@ html, body {
   cursor: pointer;
   transition: opacity 0.15s, transform 0.1s;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   white-space: nowrap;
   letter-spacing: -0.1px;
 }
@@ -509,9 +512,23 @@ html, body {
 #canvas { display: none; }
 
 /* ── Init screen – two-button layout ─────────────────────────────────────── */
-#screen-init { gap: 0; }
+#screen-init {
+  gap: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* fall back to flex-start when content overflows so it's scrollable */
+  justify-content: safe center;
+}
 #screen-init .splash-icon { margin-bottom: 6px; }
 #screen-init .btn-lg { width: 100%; max-width: 280px; }
+
+/* Shrink decorative elements on short screens so both buttons always fit */
+@media (max-height: 560px) {
+  .splash-icon { font-size: 48px; }
+  .splash-title { font-size: 24px; }
+  .splash-subtitle { font-size: 13px; margin-bottom: 10px; }
+  .or-divider { margin: 8px 0; }
+}
 
 .or-divider {
   display: flex;

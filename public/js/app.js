@@ -381,9 +381,6 @@ modalBackdrop.addEventListener('click', closeEmailModal);
 modalSendBtn.addEventListener('click', sendEmail);
 emailInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendEmail(); });
 
-document.addEventListener('touchend', e => {
-  if (e.target.closest('button')) e.preventDefault();
-}, { passive: false });
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 setScreen('init');
