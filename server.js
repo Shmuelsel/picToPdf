@@ -2,10 +2,20 @@ require('dotenv').config();
 const express = require('express');
 const nodemailer = require('nodemailer');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 app.use(express.json({ limit: '15mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Stamp CSS/JS links with build version so mobile browsers never serve stale files
+const BUILD_VER = Date.now();
+const rawHtml = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+const indexHtml = rawHtml
+  .replace('href="css/styles.css"', `href="css/styles.css?v=${BUILD_VER}"`)
+  .replace('src="js/app.js"',       `src="js/app.js?v=${BUILD_VER}"`);
+
+// Serve static assets (icons, manifest, sw.js, css, js) but not index.html
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 // ── Email validation ──────────────────────────────────────────────────────────
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -62,9 +72,11 @@ app.post('/api/send-email', async (req, res) => {
   }
 });
 
-// ── Fallback → serve index.html ───────────────────────────────────────────────
+// ── Fallback → serve versioned index.html ────────────────────────────────────
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Content-Type', 'text/html');
+  res.send(indexHtml);
 });
 
 const PORT = process.env.PORT || 3000;
