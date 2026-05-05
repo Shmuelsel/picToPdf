@@ -9,6 +9,7 @@ let currentFileName = '';
 let flashTrack      = null;
 let toastTimer      = null;
 let selectedFiles   = [];   // [{ id, dataUrl, name }]  – multi-file mode
+let selectedPdfs    = [];   // [{ id, file, name, size }] – merge mode
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const screens = {
@@ -17,6 +18,7 @@ const screens = {
   preview:  document.getElementById('screen-preview'),
   ready:    document.getElementById('screen-ready'),
   multi:    document.getElementById('screen-multi'),
+  merge:    document.getElementById('screen-merge'),
 };
 
 const video       = document.getElementById('video');
@@ -37,6 +39,16 @@ const exportBtn      = document.getElementById('export-btn');
 const downloadBtn    = document.getElementById('download-btn');
 const emailBtn       = document.getElementById('email-btn');
 const scanAgainBtn   = document.getElementById('scan-again-btn');
+
+// Merge PDF buttons
+const mergePdfsBtn   = document.getElementById('merge-pdfs-btn');
+const mergeBackBtn   = document.getElementById('merge-back-btn');
+const addPdfsBtn     = document.getElementById('add-pdfs-btn');
+const mergeFileInput = document.getElementById('merge-file-input');
+const mergeExportBtn = document.getElementById('merge-export-btn');
+const mergePdfList   = document.getElementById('merge-pdf-list');
+const mergeEmpty     = document.getElementById('merge-empty');
+const pdfCountBadge  = document.getElementById('pdf-count-badge');
 
 // Multi-file buttons
 const multiFilesBtn  = document.getElementById('multi-files-btn');
@@ -321,6 +333,127 @@ function setSendingState(on) {
   sendBtnSpinner.classList.toggle('hidden', !on);
 }
 
+// ── Merge PDFs ────────────────────────────────────────────────────────────────
+function openMergeMode() {
+  selectedPdfs = [];
+  renderPdfList();
+  setScreen('merge');
+}
+
+function addPdfsToSelection(files) {
+  const valid = Array.from(files).filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+  if (!valid.length) { showToast('Please select PDF files only.', 'error'); return; }
+  for (const file of valid) {
+    selectedPdfs.push({ id: `${Date.now()}_${Math.random()}`, file, name: file.name, size: file.size });
+  }
+  mergeFileInput.value = '';
+  renderPdfList();
+}
+
+function removePdfById(id) {
+  selectedPdfs = selectedPdfs.filter(f => f.id !== id);
+  renderPdfList();
+}
+
+function movePdf(id, dir) {
+  const idx = selectedPdfs.findIndex(f => f.id === id);
+  if (idx === -1) return;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= selectedPdfs.length) return;
+  [selectedPdfs[idx], selectedPdfs[newIdx]] = [selectedPdfs[newIdx], selectedPdfs[idx]];
+  renderPdfList();
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function renderPdfList() {
+  const count = selectedPdfs.length;
+  const isEmpty = count === 0;
+
+  mergeEmpty.classList.toggle('hidden', !isEmpty);
+  mergePdfList.classList.toggle('hidden', isEmpty);
+  pdfCountBadge.textContent = count;
+  pdfCountBadge.classList.toggle('hidden', isEmpty);
+  mergeExportBtn.disabled = count < 2;
+  mergeExportBtn.textContent = count < 2 ? 'Merge & Download' : `Merge ${count} PDFs`;
+
+  mergePdfList.innerHTML = '';
+  selectedPdfs.forEach((pdf, i) => {
+    const item = document.createElement('div');
+    item.className = 'pdf-list-item';
+    item.innerHTML = `
+      <div class="pdf-list-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+      </div>
+      <div class="pdf-list-info">
+        <span class="pdf-list-name">${pdf.name}</span>
+        <span class="pdf-list-size">${formatBytes(pdf.size)}</span>
+      </div>
+      <div class="pdf-list-order">
+        <button class="pdf-order-btn" data-id="${pdf.id}" data-dir="-1" aria-label="Move up" ${i === 0 ? 'disabled' : ''}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        </button>
+        <button class="pdf-order-btn" data-id="${pdf.id}" data-dir="1" aria-label="Move down" ${i === count - 1 ? 'disabled' : ''}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+      <button class="pdf-list-remove" data-id="${pdf.id}" aria-label="Remove ${pdf.name}">&#215;</button>
+    `;
+    mergePdfList.appendChild(item);
+  });
+
+  mergePdfList.querySelectorAll('.pdf-order-btn').forEach(btn => {
+    btn.addEventListener('click', () => movePdf(btn.dataset.id, parseInt(btn.dataset.dir)));
+  });
+  mergePdfList.querySelectorAll('.pdf-list-remove').forEach(btn => {
+    btn.addEventListener('click', () => removePdfById(btn.dataset.id));
+  });
+}
+
+async function generateMergedPdf() {
+  if (selectedPdfs.length < 2) return;
+  if (!window.PDFLib) { showToast('PDF library not loaded yet. Try again.', 'error'); return; }
+
+  mergeExportBtn.disabled = true;
+  try {
+    const { PDFDocument } = window.PDFLib;
+    const merged = await PDFDocument.create();
+
+    for (let i = 0; i < selectedPdfs.length; i++) {
+      mergeExportBtn.textContent = `Merging… (${i + 1} / ${selectedPdfs.length})`;
+      await new Promise(r => setTimeout(r, 0));
+      const bytes = await selectedPdfs[i].file.arrayBuffer();
+      let src;
+      try {
+        src = await PDFDocument.load(bytes);
+      } catch {
+        showToast(`"${selectedPdfs[i].name}" is encrypted or invalid.`, 'error');
+        return;
+      }
+      const pages = await merged.copyPages(src, src.getPageIndices());
+      pages.forEach(p => merged.addPage(p));
+    }
+
+    const mergedBytes = await merged.save();
+    pdfBlob = new Blob([mergedBytes], { type: 'application/pdf' });
+    currentFileName = `merged_${selectedPdfs.length}files_${timestamp()}.pdf`;
+    pdfFilename.textContent = currentFileName;
+    setScreen('ready');
+  } catch (err) {
+    showToast('Failed to merge PDFs.', 'error');
+    console.error(err);
+  } finally {
+    mergeExportBtn.disabled = false;
+    renderPdfList();
+  }
+}
+
 // ── Reset to home ─────────────────────────────────────────────────────────────
 function resetToHome() {
   capturedDataUrl = null;
@@ -356,6 +489,11 @@ function showToast(message, type = '') {
 // ── Event listeners ───────────────────────────────────────────────────────────
 startCameraBtn.addEventListener('click', startCamera);
 multiFilesBtn.addEventListener('click', openMultiMode);
+mergePdfsBtn.addEventListener('click', openMergeMode);
+mergeBackBtn.addEventListener('click', () => setScreen('init'));
+addPdfsBtn.addEventListener('click', () => mergeFileInput.click());
+mergeFileInput.addEventListener('change', e => addPdfsToSelection(e.target.files));
+mergeExportBtn.addEventListener('click', generateMergedPdf);
 flashBtn.addEventListener('click', toggleFlash);
 
 captureBtn.addEventListener('click', captureFromVideo);

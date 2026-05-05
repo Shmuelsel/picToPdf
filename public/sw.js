@@ -1,13 +1,10 @@
 /* DocScan Service Worker – enables offline use & "Add to Home Screen" */
 'use strict';
 
-const CACHE_NAME = 'docscan-v1';
+const CACHE_NAME = 'docscan-v3';
 const PRECACHE = [
-  '/',
-  '/css/styles.css',
-  '/js/app.js',
-  '/manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',
 ];
 
 self.addEventListener('install', e => {
@@ -29,14 +26,22 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Never cache API calls — always hit the network
   if (e.request.url.includes('/api/')) return;
 
+  // Always fetch HTML from network so the server's version-stamped links are fresh.
+  // Fall back to cache only when offline.
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request).catch(() => caches.match('/'))
+    );
+    return;
+  }
+
+  // Cache-first for all other assets (JS, CSS, images, CDN libs)
   e.respondWith(
     caches.match(e.request)
       .then(cached => cached || fetch(e.request)
         .then(response => {
-          // Cache successful GET responses for same-origin assets
           if (e.request.method === 'GET' && response.ok) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
@@ -44,6 +49,6 @@ self.addEventListener('fetch', e => {
           return response;
         })
       )
-      .catch(() => caches.match('/'))  // offline fallback: show app shell
+      .catch(() => caches.match('/'))
   );
 });

@@ -684,6 +684,122 @@ html, body {
 /* Hidden file inputs */
 #multi-file-input { display: none; }
 
+/* ── Merge PDFs screen ────────────────────────────────────────────────────── */
+#screen-merge {
+  padding: 0;
+  justify-content: flex-start;
+  background: var(--bg);
+}
+
+#merge-list-container {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  padding: 12px;
+}
+
+.pdf-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pdf-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.pdf-list-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(0, 200, 150, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.pdf-list-icon svg { width: 18px; height: 18px; }
+
+.pdf-list-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pdf-list-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+
+.pdf-list-size {
+  display: block;
+  font-size: 11px;
+  color: var(--text-sec);
+  margin-top: 2px;
+}
+
+.pdf-list-order {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.pdf-order-btn {
+  width: 30px;
+  height: 26px;
+  border: none;
+  background: var(--surface2);
+  color: var(--text-sec);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pdf-order-btn:disabled { opacity: 0.25; pointer-events: none; }
+.pdf-order-btn:active { opacity: 0.6; }
+.pdf-order-btn svg { width: 14px; height: 14px; pointer-events: none; }
+
+.pdf-list-remove {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 107, 107, 0.15);
+  color: var(--danger);
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  flex-shrink: 0;
+}
+
+.pdf-list-remove:active { background: var(--danger); color: #fff; }
+
+/* Hidden file input */
+#merge-file-input { display: none; }
+
 /* ── Responsive tweaks for larger screens ────────────────────────────────── */
 @media (min-width: 480px) {
   #app {
